@@ -5,15 +5,13 @@
 ; ---------------- Z80 computer design --------------------------------------------------
 ;
 ; 1. Components:
-; - 1 x Z80 CPU 4.5Mhz
-; - 1 x Z80 PIO (parallel input, output)
-; - 1 x 32kB AT28C256 ROM
-; - 1 x 32kB KM62256 RAM
-; - 1 x LS7404 (inverter) and 1 x LS7408 (AND) for control logic ROM and RAM
-; - 1 x Arduino nano as clock
-; - 1 x NE555 (astable multi vibrator) as a slow clock
-; - 5 x Blue LEDs for debugging control signals of Z80
-; - 8 x Green LEDs for debugging output portA of Z80 PIO
+; - Z80 CPU 4.5Mhz
+; - Z80 PIO (parallel input, output)
+; - 32kB AT28C256 ROM
+; - 32kB KM62256 RAM
+; - 74LS04 (inverter) and 1 x 74LS08 (AND) for control logic ROM and RAM
+; - Arduino nano as clock
+; - NE555 (astable multi vibrator) as a slow clock
 ; 
 ;
 ; 2. Memorymap (32kB RAM and 32kB ROM):
