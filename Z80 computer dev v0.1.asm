@@ -1,6 +1,41 @@
-; Z80 simple BIOS
+; Z80 simple BIOS for Z80 computer
 ; Frank van der Niet
 ; 15-5-2021
+;
+; ---------------- Z80 computer design --------------------------------------------------
+;
+; 1. Components:
+; - 1 x Z80 CPU 4.5Mhz
+; - 1 x Z80 PIO (parallel input, output)
+; - 1 x 32kB AT28C256 ROM
+; - 1 x 32kB KM62256 RAM
+; - 1 x LS7404 (inverter) and 1 x LS7408 (AND) for control logic ROM and RAM
+; - 1 x Arduino nano as clock
+; - 1 x NE555 (astable multi vibrator) as a slow clock
+; - 5 x Blue LEDs for debugging control signals of Z80
+; - 8 x Green LEDs for debugging output portA of Z80 PIO
+; 
+;
+; 2. Memorymap (32kB RAM and 32kB ROM):
+; ------ FFFF ------ RAM
+; ------      ------ RAM
+; ------ 8000 ------ RAM
+; ------ 7FFF ------ ROM
+; ------      ------ ROM
+; ------ 0000 ------ ROM
+;
+; 2. Z80 PIO:
+; PORT A (address 0x00): connected to a two line HD44780 LCD
+; Z80PIO D7 D6 D5 D4 D3 D2 D1 D0
+; LCD    RS EN NC NC D7 D6 D5 D4
+;        RS = Register Select, EN = Enable, NC = Not Connected, Dx = Data x
+;
+; PORT B (address 0x01): connected to a switch
+; Z80PIO D7 D6 D5 D4 D3 D2 D1 D0
+; Switch NC NC NC NC NC NC NC Sw
+; 	 Sw = Switch with pull down resistor to ground (1 is on, 0 is off)
+;
+; ---------------- BIOS design ----------------------------------------------------------
 ;
 ; This BIOS contains the following routines:
 ;
@@ -13,12 +48,13 @@
 ; 7. print_string:	Write strings to the LCD
 ; 7. read_switch:	Read the input from 1 switch
 ; 
-; The program:
+; ---------------- The program ----------------------------------------------------------
 ;
 ; 1. Sends some text to the LCD 
 ; 2. Then copies text (64 bits) to RAM
 ; 3. Reads the text from memory and sends it to the LCD
-
+; 4. Copies 32K from 0x000 (ROM) to 0x8000 (RAM)
+;
 ; ---------------- Setup of constants ----------------------------------------------------
 
 						; PIO 
@@ -30,10 +66,14 @@
 		.equ PORTB, 0b00000010		; Address of Port B
 
 						; LCD
-		.equ LCDEN, 0b01000000		; LCD enable bit
+		.equ LCDEN, 0b01000000		; LCD enable bit (1 for enable write, 0 not enable write)
+		.equ LCDRS, 0b10000000		; LCD Register Select Bit (1 for instruction, 0 for data)
 
 						; Other
 		.equ RAMTOP, 0xFFFF		; Top of RAM
+		.equ RAMBTM, 0x8000		; Bottom of RAM
+		.equ ROMTOP, 0x7FFF		; Top of ROM
+		.equ ROMBTM, 0x0000		; Bottom of ROM
 
 ; ---------------- Start of program ------------------------------------------------------
 
@@ -101,8 +141,28 @@ loop:		LD HL,message_hel1		; Print hello 1 to the LCD
 		CALL lcd_line2
 		LD HL,0x8030			; Start address of line 4 in RAM of text
 		CALL print_string
-		CALL read_switch		
-	
+		CALL read_switch
+
+						; Now display text for copying 32K to RAM
+		LD HL,message_menu		
+		CALL lcd_clear
+		CALL print_string
+		CALL lcd_line2
+		LD HL,message_men2
+		CALL print_string
+		CALL read_switch
+						; Now we copy 32K of ROM to RAM
+		LD HL,0x0000			; Start address to copy data from
+		LD DE,0x8000			; First address to copy data to
+		LD BC,0x7F00			; Number bytes to copy (32k), leave some space for SP
+		LDIR				; Copy data
+
+						; Now display text that copy to RAM is completed
+		LD HL,message_mts3
+		CALL lcd_clear
+		CALL print_string
+		CALL read_switch
+
 		JP loop
 ; ---------------- End of program --------------------------------------------------------
 
@@ -226,10 +286,11 @@ message_hel3:	.byte "Frank vd Niet", 0x00
 
 message_menu:	.byte "MENU", 0x00
 message_men1:	.byte "1. Check memory", 0x00
+message_men2:	.byte "2. Copy 32K to RAM", 0x00
 
 message_mts1:	.byte "Copy data to", 0x00
 message_mts2:	.byte "memory 8000H", 0x00
-message_mts3:	.byte "Copied to memory", 0x00
+message_mts3:	.byte "Copied to RAM", 0x00
 message_mts4:	.byte "Read from RAM", 0x00
 
 message_next:	.byte "(1=Next)", 0x00
